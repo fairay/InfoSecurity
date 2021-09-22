@@ -7,12 +7,14 @@ import (
 	"io"
 	"io/ioutil"
 	"log"
+// 	"math"
 	"math/rand"
 	"os"
 	"time"
 )
 
-const confPath = "enigma.config"
+const confFile = "enigma.config"
+const keyFile = "1.key";
 
 func WriteRndSwapers(filename string, rotN int) (error) {
 	f, err := os.Create(filename)
@@ -48,12 +50,14 @@ func WriteRndSwapers(filename string, rotN int) (error) {
 
 func ReadSwapers(filename string) (swap_arr [][PosN]byte, err error) {
 	file, err := os.Open(filename)
+	if err != nil {
+        log.Fatal("Couldn't open file")
+    }
     defer file.Close()
 	
-	var size int64 = int64(PosN) // stats.Size()
+	var size int64 = int64(PosN)
 	bytes := make([]byte, size)
     bufr := bufio.NewReader(file)
-    // _,err = bufr.Read(bytes)
 	
 	for {
 		n, err := io.ReadFull(bufr, bytes);
@@ -70,32 +74,74 @@ func ReadSwapers(filename string) (swap_arr [][PosN]byte, err error) {
 	return
 }
 
+func ReadKey(filename string) (rotPick [RotorN]int, shiftPick [RotorN]int, err error) {
+	file, err := os.Open(filename)
+	if err != nil {
+        log.Fatal("Couldn't open file")
+    }
+	defer file.Close()
+
+	for i := 0; i < RotorN; i++ {
+		fmt.Fscanf(file, "%d", &rotPick[i])
+	}
+
+	for i := 0; i < RotorN; i++ {
+		fmt.Fscanf(file, "%d", &shiftPick[i])
+	}
+
+	return
+}
+
+func BuildEnigma() (e *Enigma, err error) {
+	swapers, err := ReadSwapers(confFile)
+	if err != nil { return }
+
+	rot, shift, err := ReadKey(keyFile)
+	if err != nil { return }
+
+	// rotPick := [...]int{1, 2, 3}
+	// shiftPick := [...]int{0, 0, 0}
+	e = NewEnigma(swapers, rot, shift)
+	return
+}
+
+func OutName(sName string) (outName string) {
+	if sName[len(sName)-4:] == ".enc" {
+		outName = sName[:len(sName)-4]
+	} else {
+		outName = fmt.Sprintf("%s.enc", sName)
+	}
+	return
+}
 
 func main() {
 	rand.Seed(time.Now().UnixNano())
 	
-	// WriteRndSwapers(fPath, 8)
-	swapers, _ := ReadSwapers(confPath)
+	var sourceFile string;
+	switch len(os.Args) {
+	case 1:
+		log.Fatal("Недостаточно агрументов")
+	case 3:
+		switch os.Args[2] {
+		case "-rebuild":
+			WriteRndSwapers(confFile, 8)
+		}
+	default:
+		sourceFile = os.Args[1]
+		fmt.Println("Путь файла для обработки: ")
+	}
 
-	rotPick := [...]int{1, 2, 3}
-	shiftPick := [...]int{0, 0, 0}
-	enigma := NewEnigma(swapers, rotPick, shiftPick)
+	enigma, _ := BuildEnigma()
 
-	var encName string;
-	fmt.Println("Путь файла для обработки:")
-	fmt.Scanf("%s", &encName)
+	// fmt.Print("Путь файла для обработки: ")
+	// fmt.Scanf("%s", &sourceFile)
 
-	inBytes, _ := ioutil.ReadFile(encName)
+	inBytes, _ := ioutil.ReadFile(sourceFile)
 	outBytes := enigma.encryptArr(inBytes)
 
-	var outName string
-	if encName[len(encName)-4:] == ".enc" {
-		outName = encName[:len(encName)-4]
-	} else {
-		outName = fmt.Sprintf("%s.enc", encName)
-	}
-	fmt.Println("Output file:", outName)
+	destFile := OutName(sourceFile);
+	fmt.Println("Результирующий файл: ", destFile)
+	ioutil.WriteFile(destFile, outBytes, 0644)
 
-	ioutil.WriteFile(outName, outBytes, 0644)
 	return
 }
