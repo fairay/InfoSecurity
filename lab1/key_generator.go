@@ -10,16 +10,18 @@ import (
 	"strings"
 )
 
-func getUuid() string {
-	bite_res, _ := exec.Command("cmd", "/C", "wmic", "csproduct", "get", "uuid").Output();
-	var res string;
-	res = strings.Split(string(bite_res), "\n")[1];
-	return res;
+func getSerialNumber() string {
+	// bite_res, _ := exec.Command("cmd", "/C", "wmic", "csproduct", "get", "uuid").Output()
+	bite_res, _ := exec.Command("cmd", "/C", "wmic", "bios", "get", "serialnumber").Output()
+	var res string
+	res = strings.Split(string(bite_res), "\n")[1]
+	fmt.Println(res)
+	return res
 }
 
 func getHashedKey() string {
 	var resStr string;
-	byteKey := []byte(getUuid())
+	byteKey := []byte(getSerialNumber())
 	hashedKey := sha256.Sum256(byteKey);
 	resStr = fmt.Sprintf("%x", hashedKey);
 	return resStr;
