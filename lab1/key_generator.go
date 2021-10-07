@@ -11,11 +11,9 @@ import (
 )
 
 func getSerialNumber() string {
-	// bite_res, _ := exec.Command("cmd", "/C", "wmic", "csproduct", "get", "uuid").Output()
 	bite_res, _ := exec.Command("cmd", "/C", "wmic", "bios", "get", "serialnumber").Output()
 	var res string
 	res = strings.Split(string(bite_res), "\n")[1]
-	fmt.Println(res)
 	return res
 }
 
@@ -47,7 +45,7 @@ func fwriteKey(fName string) int {
 		return -1;
 	}
 
-    mw := io.MultiWriter(os.Stdout, file)
+    mw := io.Writer(file)
     _, err = fmt.Fprint(mw, getHashedKey())
 	file.Close();
 	if err != nil {
