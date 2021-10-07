@@ -4,25 +4,31 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"math/rand"
 	"os"
+	"time"
 )
 
-type block uint64;
 const BlockN = 8;
 
+const keyPath = "1.key"
 
-func EncFile(SrcFName string, DstFName string) error {
-	fSrc, err := os.Open(SrcFName)
+func EncFile(SrcPath string, DstPath string, KeyPath string) error {
+	fSrc, err := os.Open(SrcPath)
 	if err != nil {
 		log.Fatal("open failed")
 	}
 	defer fSrc.Close()
 
-	fDst, err := os.Create(DstFName)
+	fDst, err := os.Create(DstPath)
 	if err != nil {
 		log.Fatal("open failed")
 	}
 	defer fDst.Close()
+
+	key, err := ReadKey(KeyPath)
+	roundKeys := GetRoundKeys(key)
+	fmt.Println(roundKeys)
 
 	for {
 		data, n, err := ReadBlock(fSrc)
@@ -42,14 +48,14 @@ func EncFile(SrcFName string, DstFName string) error {
 	return nil
 }
 
-func DecFile(SrcFName string, DstFName string) error {
-	fSrc, err := os.Open(SrcFName)
+func DecFile(SrcPath string, DstPath string, KeyPath string) error {
+	fSrc, err := os.Open(SrcPath)
 	if err != nil {
 		log.Fatal("open failed")
 	}
 	defer fSrc.Close()
 
-	fDst, err := os.Create(DstFName)
+	fDst, err := os.Create(DstPath)
 	if err != nil {
 		log.Fatal("open failed")
 	}
@@ -89,24 +95,29 @@ func OutName(sName string) (outName string, isEnc bool) {
 }
 
 func main() {
+	rand.Seed(time.Now().UnixNano())
 
 	var sourceFile string;
 	switch len(os.Args) {
 	case 1:
 		log.Fatal("Недостаточно агрументов")
-	case 3:
-		switch os.Args[2] {
-		case "-rebuild":
-			// regenerate key
+	case 2:
+		switch os.Args[1] {
+		case "--new-key":
+			WriteRndKey(keyPath)
+			fmt.Println("Новый ключ создан")
+			return
+		default:
+			sourceFile = os.Args[1]
 		}
 	default:
-		sourceFile = os.Args[1]
+		log.Fatal("Неизвестные параметры")
 	}
 
 	destFile, isEnc := OutName(sourceFile);
 	if isEnc {
-		EncFile(sourceFile, destFile)
+		EncFile(sourceFile, destFile, keyPath)
 	} else {
-		DecFile(sourceFile, destFile)
+		DecFile(sourceFile, destFile, keyPath)
 	}
 }
