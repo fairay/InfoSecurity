@@ -34,11 +34,16 @@ func EncFile(SrcPath string, DstPath string, KeyPath string) error {
 		data, n, err := ReadBlock(fSrc)
 
 		if n != 0 {
+			data = EncBlock(data, roundKeys)
 			WriteBlock(fDst, data)
 		}
 
 		if err == io.EOF {
-			WriteAddSize(fDst, BlockN - n)
+			s := BlockN - n
+			if s == BlockN {
+				s = 0
+			}
+			WriteAddSize(fDst, s)
 			break
 		} else if err != nil {
 			log.Fatal("read failed")
@@ -61,11 +66,17 @@ func DecFile(SrcPath string, DstPath string, KeyPath string) error {
 	}
 	defer fDst.Close()
 
+	key, err := ReadKey(KeyPath)
+	roundKeys := GetRoundKeys(key)
+	fmt.Println(roundKeys)
 	addSize := 0
+
 	for {
 		data, n, err := ReadBlock(fSrc)
 
 		if n == BlockN {
+			data = DecBlock(data, roundKeys)
+
 			err = WriteBlock(fDst, data)
 		} else if err == io.EOF && n == 1 {
 			addSize = GetAddSize(data)
