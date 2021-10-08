@@ -27,10 +27,23 @@ func (this *block) appendB(data block, size byte) {
 	*this |= data
 }
 
+/*
 func (this *block) shuffleBits(pos []byte, size byte) {
 	shufData := block(0)
 	for key, val := range pos {
 		shufData.setBit(this.getBit(val), byte(key))
+	}
+	*this = shufData
+
+	if size != 64 {
+		*this &= 1<<size - 1
+	}
+}*/
+
+func (this *block) shuffleBits(pos []byte, size byte) {
+	shufData := block(0)
+	for key, val := range pos {
+		shufData.setBit(this.getBit(val-1), byte(key))
 	}
 	*this = shufData
 

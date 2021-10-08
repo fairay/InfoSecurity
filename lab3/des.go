@@ -29,15 +29,15 @@ func FeistelF(mr block, key block) (res block) {
 	mr.shuffleBits(tab.E, 48)
 	z := mr ^ key
 	for i := 7; i >= 0; i-- {
-		off := byte(i)*4
+		off := byte(i)*6
 		x := z.getBits([]byte{ off+0, off+5 })
 		y := z.getBits([]byte{ off+1, off+2, off+3, off+4 })
 		
 		si := tab.S[i][x][y]
 		res.appendB(block(si), 4)
 	}
-	res.shuffleBits(tab.P, 32)
 
+	res.shuffleBits(tab.P, 32)
 	return
 }
 
@@ -66,4 +66,3 @@ func DecBlock(data block, keys [RoundN]block) (block) {
 	data.shuffleBits(tab.NegIP, 64)
 	return data
 }
-
