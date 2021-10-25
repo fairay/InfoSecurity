@@ -46,12 +46,19 @@ func GCD(a uint64, b uint64) uint64 {
 
 func ExtGCD(a uint64, b uint64) (r uint64, x uint64, y uint64) {
 	if a == 0 {
-		return b, 0, 1;
+		return b, 0, 1
+	} else if b == 0 {
+		return a, 0, 1
 	}
 
-	r, x1, y1 := ExtGCD(b%a, a);
-	x = y1 - (b / a) * x1;
+	r, x1, y1 := ExtGCD(b % a, a)
+	if y1 >= (b / a) * x1 {
+		x = y1 - (b / a) * x1;
+	} else {
+		x = (b / a) * x1 - y1;
+	}
 	y = x1;
+	fmt.Println(">> \t", r, x, y)
 	return
 }
 
@@ -73,7 +80,14 @@ func PublicKey(phi uint64) uint64 {
 }
 
 func PrivateKey(pub uint64, phi uint64) uint64 {
-	return 0
+	r, x, y := ExtGCD(pub, phi)
+	negx := math.MaxUint64 - x + 1
+	fmt.Println(r, y, "\t\t", x, negx)
+	if x < negx {
+		return x
+	} else {
+		return negx
+	}
 }
 
 func main() {
@@ -88,11 +102,14 @@ func main() {
 	N := p*q
 	phi := EulersF(p, q)
 
+	publicKey := PublicKey(phi)
+	privateKey := PrivateKey(publicKey, phi)
 
-	_, x, _ := ExtGCD(11, 71)
-	fmt.Println(math.MaxUint64(x, 0-x))
 	fmt.Println(p, q)
 	fmt.Println(N)
 	fmt.Println(phi)
-	fmt.Println(PublicKey(phi))
+	fmt.Println(publicKey)
+	fmt.Println(privateKey)
+
+	fmt.Println((publicKey * privateKey) % phi)
 }
