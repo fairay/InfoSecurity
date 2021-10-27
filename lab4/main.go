@@ -4,8 +4,10 @@ import (
 	"fmt"
 	"math"
 	"math/rand"
+	"math/big"
 	"time"
 )
+
 
 func IsPrime(n uint64) bool {
 	if n % 2 == 0 && n != 2 {
@@ -22,12 +24,9 @@ func IsPrime(n uint64) bool {
 }
 
 func PrimeN(begin uint64, end uint64) uint64 {
-	var a uint64
-	for {
+	var a uint64 = 4
+	for !IsPrime(a) {
 		a = (rand.Uint64() % (end-begin)) + begin
-		if IsPrime(a) {
-			break
-		}
 	}
 	return a
 }
@@ -35,30 +34,23 @@ func PrimeN(begin uint64, end uint64) uint64 {
 func GCD(a uint64, b uint64) uint64 {
 	for a * b != 0 {
 		if a > b {
-			a %= b
+			a = a % b
 		} else {
-			b %= a
+			b = b % a
 		}
 	}
 
-	return a+b
+	return a + b
 }
 
-func ExtGCD(a uint64, b uint64) (r uint64, x uint64, y uint64) {
-	if a == 0 {
-		return b, 0, 1
-	} else if b == 0 {
-		return a, 0, 1
+func ExtGCD(a *big.Int, b *big.Int) (r *big.Int, x *big.Int, y *big.Int) {
+	if a.Cmp(big.NewInt(0)) == 0 {
+		return b, big.NewInt(0), big.NewInt(1)
 	}
 
-	r, x1, y1 := ExtGCD(b % a, a)
-	if y1 >= (b / a) * x1 {
-		x = y1 - (b / a) * x1;
-	} else {
-		x = (b / a) * x1 - y1;
-	}
-	y = x1;
-	fmt.Println(">> \t", r, x, y)
+	r, x1, y1 := ExtGCD(big.NewInt(0).Mod(b, a), a)
+	x = y1.Sub(y1,  big.NewInt(0).Mul(x1, big.NewInt(0).Div(b, a)))
+	y = x1
 	return
 }
 
@@ -66,29 +58,35 @@ func EulersF(p uint64, q uint64) uint64 {
 	return (p-1) * (q-1)
 }
 
-func PublicKey(phi uint64) uint64 {
-	begin := uint64(1 << 31)
-	end := uint64(1 << 32) - 1
-	var a uint64
-	for {
-		a = (rand.Uint64() % (end-begin)) + begin
-		if GCD(a, phi) == 1 {
-			break
-		}
+func GenerateKeys(phi uint64) (pub uint64, pri uint64) {
+	pri = 0
+	for pri == 0 {
+		pub = PublicKey(phi)
+		pri = PrivateKey(pub, phi)
 	}
-	return a
+	return
+}
+
+func PublicKey(phi uint64) (pub uint64) {
+	pub = phi
+	for GCD(pub, phi) != 1 {
+		pub = rand.Uint64() % phi
+	}
+	return
 }
 
 func PrivateKey(pub uint64, phi uint64) uint64 {
-	r, x, y := ExtGCD(pub, phi)
-	negx := math.MaxUint64 - x + 1
-	fmt.Println(r, y, "\t\t", x, negx)
-	if x < negx {
-		return x
+	Bpub := big.NewInt(0).SetUint64(pub)
+	Bphi := big.NewInt(0).SetUint64(phi)
+	_, x, _ := ExtGCD(Bpub, Bphi)
+
+	if x.Cmp(big.NewInt(0)) == -1 {
+		return 0
 	} else {
-		return negx
+		return x.Uint64()
 	}
 }
+
 
 func main() {
 	rand.Seed(time.Now().UnixNano())
@@ -102,14 +100,20 @@ func main() {
 	N := p*q
 	phi := EulersF(p, q)
 
-	publicKey := PublicKey(phi)
-	privateKey := PrivateKey(publicKey, phi)
+	publicKey, privateKey := GenerateKeys(phi)
 
-	fmt.Println(p, q)
-	fmt.Println(N)
-	fmt.Println(phi)
-	fmt.Println(publicKey)
-	fmt.Println(privateKey)
+	fmt.Println("p\t", p)
+	fmt.Println("q\t", q)
+	fmt.Println("N\t", N)
+	fmt.Println()
+	fmt.Println("phi\t", phi)
+	fmt.Println("pub\t", publicKey)
+	fmt.Println("priv\t", privateKey)
 
-	fmt.Println((publicKey * privateKey) % phi)
+	fmt.Printf("\n( %v *  %v ) mod %v\n", publicKey, privateKey, phi)
+	Bphi := big.NewInt(0).SetUint64(phi)
+	Bpub := big.NewInt(0).SetUint64(publicKey)
+	Bpri := big.NewInt(0).SetUint64(privateKey)
+
+	fmt.Println(big.NewInt(0).DivMod(big.NewInt(0).Mul(Bpub, Bpri), Bphi, big.NewInt(1)))
 }
