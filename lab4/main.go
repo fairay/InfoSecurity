@@ -28,16 +28,16 @@ func EncFile(SrcPath string, DstPath string, KeyPath string) error {
 	n, key, err := ReadKeys(KeyPath)
 
 	for {
-		data, nReaded, err := ReadBlock(fSrc)
+		data, nReaded, err := ReadBlock(fSrc, 7)
 
 		if nReaded != 0 {
 			data = EncBlock(data, n, key)
-			WriteBlock(fDst, data)
+			WriteBlock(fDst, data, 8)
 		}
 
 		if err == io.EOF {
-			s := 8 - nReaded
-			if s == 8 {
+			s := 7 - nReaded
+			if s == 7 {
 				s = 0
 			}
 			WriteAddSize(fDst, s)
@@ -67,11 +67,11 @@ func DecFile(SrcPath string, DstPath string, KeyPath string) error {
 	addSize := 0
 
 	for {
-		data, nReaded, err := ReadBlock(fSrc)
+		data, nReaded, err := ReadBlock(fSrc, 8)
 
 		if nReaded == 8 {
 			data = DecBlock(data, n, key)
-			err = WriteBlock(fDst, data)
+			err = WriteBlock(fDst, data, 7)
 		} else if err == io.EOF && nReaded == 1 {
 			addSize = GetAddSize(data)
 			break

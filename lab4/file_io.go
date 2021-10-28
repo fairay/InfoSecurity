@@ -36,7 +36,7 @@ func WriteBlocks(fName string, blocks []uint64) error {
 	defer f.Close()
 
 	for _, v := range blocks {
-		err := WriteBlock(f, v)
+		err := WriteBlock(f, v, 8)
 		if err != nil{
 			return errors.New("key write failed")
 		} 
@@ -53,29 +53,29 @@ func WriteRndKeys(pubF, priF string) (err error) {
 	return
 }
 
-func ReadBlock(f *os.File) (uint64, byte, error) {
+func ReadBlock(f *os.File, size int) (uint64, byte, error) {
 	var res uint64
 	buf := make([]byte, 8)
-	n, err := f.Read(buf)
+	n, err := f.Read(buf[8-size:8])
 
 	if err != nil {
 		return 0, 0, err
 	}
 
 	res = uint64(binary.BigEndian.Uint64(buf))
-	if n != 8 {
+	if n != size {
 		err = io.EOF
 	}
 
 	return res, byte(n), err
 }
 
-func WriteBlock(f *os.File, data uint64) error {
+func WriteBlock(f *os.File, data uint64, size int) error {
 	buf := make([]byte, 8)
 	binary.BigEndian.PutUint64(buf, uint64(data))
-	n, err := f.Write(buf)
+	n, err := f.Write(buf[8-size:8])
 
-	if err != nil || n != 8 {
+	if err != nil || n != size {
 		return errors.New("write fail")
 	} else {
 		return nil
