@@ -2,118 +2,127 @@ package main
 
 import (
 	"fmt"
-	"math"
+	"io"
+	"log"
 	"math/rand"
-	"math/big"
+	"os"
 	"time"
 )
 
+const priKeyPath = "pri.key"
+const pubKeyPath = "pub.key"
 
-func IsPrime(n uint64) bool {
-	if n % 2 == 0 && n != 2 {
-		return false
+func EncFile(SrcPath string, DstPath string, KeyPath string) error {
+	fSrc, err := os.Open(SrcPath)
+	if err != nil {
+		log.Fatal("open failed")
 	}
+	defer fSrc.Close()
 
-	for i:=uint64(3); i <= uint64(math.Sqrt(float64(n))); i+=2 {
-		if n % i == 0 {
-			return false;
+	fDst, err := os.Create(DstPath)
+	if err != nil {
+		log.Fatal("open failed")
+	}
+	defer fDst.Close()
+
+	n, key, err := ReadKeys(KeyPath)
+
+	for {
+		data, nReaded, err := ReadBlock(fSrc)
+
+		if nReaded != 0 {
+			data = EncBlock(data, n, key)
+			WriteBlock(fDst, data)
+		}
+
+		if err == io.EOF {
+			s := 8 - nReaded
+			if s == 8 {
+				s = 0
+			}
+			WriteAddSize(fDst, s)
+			break
+		} else if err != nil {
+			log.Fatal("read failed")
 		}
 	}
 
-	return true;
+	return nil
 }
 
-func PrimeN(begin uint64, end uint64) uint64 {
-	var a uint64 = 4
-	for !IsPrime(a) {
-		a = (rand.Uint64() % (end-begin)) + begin
+func DecFile(SrcPath string, DstPath string, KeyPath string) error {
+	fSrc, err := os.Open(SrcPath)
+	if err != nil {
+		log.Fatal("open failed")
 	}
-	return a
-}
+	defer fSrc.Close()
 
-func GCD(a uint64, b uint64) uint64 {
-	for a * b != 0 {
-		if a > b {
-			a = a % b
+	fDst, err := os.Create(DstPath)
+	if err != nil {
+		log.Fatal("open failed")
+	}
+	defer fDst.Close()
+
+	n, key, err := ReadKeys(KeyPath)
+	addSize := 0
+
+	for {
+		data, nReaded, err := ReadBlock(fSrc)
+
+		if nReaded == 8 {
+			data = DecBlock(data, n, key)
+			err = WriteBlock(fDst, data)
+		} else if err == io.EOF && nReaded == 1 {
+			addSize = GetAddSize(data)
+			break
 		} else {
-			b = b % a
+			log.Fatal("read failed")
 		}
 	}
 
-	return a + b
-}
-
-func ExtGCD(a *big.Int, b *big.Int) (r *big.Int, x *big.Int, y *big.Int) {
-	if a.Cmp(big.NewInt(0)) == 0 {
-		return b, big.NewInt(0), big.NewInt(1)
+	fi, err := fDst.Stat()
+	if err != nil {
+		return err
 	}
 
-	r, x1, y1 := ExtGCD(big.NewInt(0).Mod(b, a), a)
-	x = y1.Sub(y1,  big.NewInt(0).Mul(x1, big.NewInt(0).Div(b, a)))
-	y = x1
-	return
+	return fDst.Truncate(fi.Size() - int64(addSize))
 }
 
-func EulersF(p uint64, q uint64) uint64 {
-	return (p-1) * (q-1)
-}
-
-func GenerateKeys(phi uint64) (pub uint64, pri uint64) {
-	pri = 0
-	for pri == 0 {
-		pub = PublicKey(phi)
-		pri = PrivateKey(pub, phi)
-	}
-	return
-}
-
-func PublicKey(phi uint64) (pub uint64) {
-	pub = phi
-	for GCD(pub, phi) != 1 {
-		pub = rand.Uint64() % phi
-	}
-	return
-}
-
-func PrivateKey(pub uint64, phi uint64) uint64 {
-	Bpub := big.NewInt(0).SetUint64(pub)
-	Bphi := big.NewInt(0).SetUint64(phi)
-	_, x, _ := ExtGCD(Bpub, Bphi)
-
-	if x.Cmp(big.NewInt(0)) == -1 {
-		return 0
+func OutName(sName string) (outName string, isEnc bool) {
+	if sName[len(sName)-4:] == ".enc" {
+		outName = sName[:len(sName)-4]
+		isEnc = false
 	} else {
-		return x.Uint64()
+		outName = fmt.Sprintf("%s.enc", sName)
+		isEnc = true
 	}
+	return
 }
-
 
 func main() {
 	rand.Seed(time.Now().UnixNano())
 
-	begin := uint64(1 << 31)
-	end := uint64(1 << 32) - 1
+	var sourceFile string
+	switch len(os.Args) {
+	case 1:
+		log.Fatal("Недостаточно агрументов")
+	case 2:
+		switch os.Args[1] {
+		case "--new-key":
+			WriteRndKeys(pubKeyPath, priKeyPath)
+			fmt.Println("Новый ключ создан")
+			return
+		default:
+			sourceFile = os.Args[1]
+		}
+	default:
+		log.Fatal("Неизвестные параметры")
+	}
 
-	p := PrimeN(begin, end)
-	q := PrimeN(begin, end)
-
-	N := p*q
-	phi := EulersF(p, q)
-
-	publicKey, privateKey := GenerateKeys(phi)
-
-	fmt.Println("p\t", p)
-	fmt.Println("q\t", q)
-	fmt.Println("N\t", N)
-	fmt.Println()
-	fmt.Println("phi\t", phi)
-	fmt.Println("pub\t", publicKey)
-	fmt.Println("priv\t", privateKey)
-
-	fmt.Printf("\n( %v *  %v ) mod %v\n", publicKey, privateKey, phi)
-	Bphi := big.NewInt(0).SetUint64(phi)
-	Bpub := big.NewInt(0).SetUint64(publicKey)
-	Bpri := big.NewInt(0).SetUint64(privateKey)
-
-	fmt.Println(big.NewInt(0).DivMod(big.NewInt(0).Mul(Bpub, Bpri), Bphi, big.NewInt(1)))
+	destFile, isEnc := OutName(sourceFile)
+	if isEnc {
+		EncFile(sourceFile, destFile, pubKeyPath)
+	} else {
+		DecFile(sourceFile, destFile, priKeyPath)
+	}
 }
