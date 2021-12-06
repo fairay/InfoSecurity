@@ -19,10 +19,7 @@ func powMod(data, pow, n uint64) uint64 {
 }
 
 func EncBlock(data uint64, n, key uint64) uint64 {
-	// fmt.Printf("%64b\t", data)
-	data = powMod(data, key, n)
-	// fmt.Printf("%64b\n", data)
-	return data
+	return powMod(data, key, n)
 }
 
 func DecBlock(data uint64, n, key uint64) uint64 {
