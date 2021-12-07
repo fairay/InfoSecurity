@@ -2,18 +2,21 @@ package main
 
 import (
 	"fmt"
+	"os"
 )
 
-func HuffmanEncode(data []byte) {
+const folderPath = "temp/"
+const mapPath = "cmp.map"
+
+func HuffmanEncode(data []byte) ([]byte, *CmpMap) {
 	stat := NewStatMap()
 	for _, v := range data {
 		stat.Add(v)
 	}
 
-	tree := NewPrefixTree(stat)
-	tree.root.Print("")
+	tree := NewPrefixTree(stat) // tree.root.Print("")
 	tableStruct := tree.ToMap()
-	table := tableStruct.table
+	table := tableStruct.Table
 
 	cmpBits := EmptyBitSet()
 	for _, v := range data {
@@ -21,29 +24,72 @@ func HuffmanEncode(data []byte) {
 	}
 
 	copyBytes := cmpBits.ToBytes()
-	WriteFileBytes("ruko.blud", copyBytes)
-	fmt.Println(copyBytes)
+	return copyBytes, tableStruct
+}
 
-	copyBytes, _ = ReadFileBytes("ruko.blud")
-	fmt.Println(copyBytes)
-	cmpBits = BitSetFromBytes(copyBytes)
-	
+func HuffmanDecode(data []byte, m *CmpMap) []byte {
+	cmpBits := BitSetFromBytes(data)
 	tempBits := EmptyBitSet()
-	ans := ""
-	for i := cmpBits.len-1; i >= 0; i-- {
-		tempBits.ForvardBit(cmpBits.Val(i))
-		if val, found := tableStruct.FindVal(tempBits); found {
-			ans = string(val) + ans
+
+	ans := make([]byte, 0)
+	im := m.ITable()
+	for i := cmpBits.Len - 1; i >= 0; i-- {
+		tempBits.ForwardBit(cmpBits.Val(i))
+
+		if val, found := im.FindVal(tempBits); found {
+			ans = append(ans, val)
 			tempBits = EmptyBitSet()
 		}
 	}
-	fmt.Println()
-	fmt.Println(ans)
+	
+	// Reverse ans
+	for i, j := 0, len(ans)-1; i < j; i, j = i+1, j-1 {
+		ans[i], ans[j] = ans[j], ans[i]
+	}
+
+	return []byte(ans)
 }
 
 func main() {
-	// HuffmanEncode([]byte("abcdefghijklmnop"))
-	str := "abcdefghijabcdefgagrnclfkabcdefgagrnclfk                    cum"
-	HuffmanEncode([]byte(str)) // abcdefgagrnclfk
-	fmt.Println(str)
+	switch len(os.Args) {
+	case 1:
+		panic(fmt.Errorf("Недостаточно агрументов"))
+	case 2:
+		panic(fmt.Errorf("Недостаточно агрументов"))
+	case 3:
+		panic(fmt.Errorf("Недостаточно агрументов"))
+	case 4:
+		switch os.Args[1] {
+		case "--cmp":
+			// Example: .\lab6.exe --cmp parrot.jpg parrot.cmp
+			data, err := ReadFileBytes(folderPath + os.Args[2])
+			if err != nil {
+				panic(err)
+			}
+
+			data, m := HuffmanEncode(data)
+
+			WriteFileBytes(folderPath+os.Args[3], data)
+			WriteFileMap(folderPath+mapPath, m)
+		case "--uncmp":
+			// Example: .\lab6.exe --uncmp parrot.cmp new.jpg
+			data, err := ReadFileBytes(folderPath + os.Args[2])
+			if err != nil {
+				panic(err)
+			}
+
+			m, err := ReadFileMap(folderPath+mapPath)
+			if err != nil {
+				panic(err)
+			}
+
+			data = HuffmanDecode(data, m)
+			WriteFileBytes(folderPath+os.Args[3], data)
+		default:
+			panic(fmt.Errorf("Неизвестная комманда"))
+		}
+
+	default:
+		panic(fmt.Errorf("Неизвестные параметры"))
+	}
 }

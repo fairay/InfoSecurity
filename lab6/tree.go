@@ -24,16 +24,16 @@ func (this *Node) Print(code string) {
 	}
 }
 
-func (this *Node) ToMap(bits *bitSet, m *cmpMap) {
+func (this *Node) ToMap(bits *BitSet, m *CmpMap) {
 	if this.val != nil {
-		m.table[*this.val] = bits
+		m.Table[*this.val] = bits
 	} else {
 		bit0 := bits.Copy()
-		bit0.ForvardBit(false)
+		bit0.ForwardBit(false)
 		this.n0.ToMap(bit0, m)
 
 		bit1 := bits.Copy()
-		bit1.ForvardBit(true)
+		bit1.ForwardBit(true)
 		this.n1.ToMap(bit1, m)
 	}
 }
@@ -73,9 +73,9 @@ func (this *prefixTree) Collapse() {
 
 	this.root = this.arr[0]
 }
-func (this *prefixTree) ToMap() *cmpMap {
-	m := new(cmpMap)
-	m.table = make(map[byte]*bitSet)
+func (this *prefixTree) ToMap() *CmpMap {
+	m := new(CmpMap)
+	m.Table = make(map[byte]*BitSet)
 	this.root.ToMap(EmptyBitSet(), m)
 	return m
 }
