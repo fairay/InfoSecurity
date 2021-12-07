@@ -13,7 +13,6 @@ import (
 
 const priKeyPath = "pri.key"
 const pubKeyPath = "pub.key"
-const signExt = ".sign"
 
 func FileHash(fPath string) []byte {
 	f, err := os.Open(fPath)
